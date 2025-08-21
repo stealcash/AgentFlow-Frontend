@@ -151,3 +151,38 @@ export async function callPublicApi(
 }
 
 
+
+export async function callBinaryApi(
+  type: HttpMethod,
+  path: string,
+  data: unknown = null,
+  extraHeaders = {}
+) {
+  if (!path || !type) return;
+
+  const url = `${BASE_URL}${path}`;
+  try {
+    let result;
+
+    switch (type.toLowerCase()) {
+      case 'get':
+        result = await axios.get(url, {
+          ...getConfig(extraHeaders),
+          responseType: 'blob', // 👈 Important
+        });
+        break;
+      case 'post':
+        result = await axios.post(url, data, {
+          ...getConfig(extraHeaders),
+          responseType: 'blob',
+        });
+        break;
+      default:
+        throw new Error('Unsupported HTTP method for binary');
+    }
+
+    return result.data; // This will be a Blob
+  } catch (err) {
+    throw handleErrorWithCode(err);
+  }
+}
