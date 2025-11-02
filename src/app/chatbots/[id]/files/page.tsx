@@ -2,30 +2,73 @@
 
 import React, { useState, useEffect } from 'react';
 import { callApi } from '@/utils/api';
-import { ChatbotFile, UploadFileInput, ApiResponse } from '@/types/interface';
+import { UploadFileInput } from '@/types/interface';
 import { toast } from 'react-hot-toast';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+
+type ChatbotFile = {
+  id: number;
+  title: string;
+  file_type: string;
+  created_at: string;
+};
+
+type FileResponse = {
+  data: {
+    files: ChatbotFile[];
+  };
+  message: string;
+  status: number;
+};
+
+type FileDownloadResponse = {
+  data: {
+    file: {
+      file_data: string;
+      file_type: string;
+    };
+  };
+};
 
 const ChatbotFiles: React.FC = () => {
+  // Auth hooks
+  const { token, loading: authLoading } = useAuth();
+  const router = useRouter();
   const params = useParams();
   const chatbotId = params.id as string;
+  
+  // State hooks
   const [files, setFiles] = useState<ChatbotFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
+  const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
-    loadFiles();
-  }, [chatbotId]);
+    if (token && chatbotId) {
+      const load = async () => {
+        setDataLoading(true);
+        await loadFiles();
+        setDataLoading(false);
+      };
+      load();
+    }
+  }, [token, chatbotId]);
 
   const loadFiles = async () => {
     try {
-      const response = await callApi('get', `/api/v1/chatbots/${chatbotId}/files`) as ApiResponse;
-      if (response?.data?.files) {
-        setFiles(response.data.files as ChatbotFile[]);
+      const res = await callApi('get', `/api/v1/chatbots/${chatbotId}/files`) as FileResponse;
+      if (res?.data?.files) {
+        setFiles(res.data.files);
+      } else {
+        setFiles([]);
+        toast.error('No files found');
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to load files:', err);
       toast.error('Failed to load files');
+      setFiles([]);
     }
   };
 
@@ -63,7 +106,7 @@ const ChatbotFiles: React.FC = () => {
         setTitle('');
         loadFiles();
       };
-    } catch (error) {
+    } catch {
       toast.error('Failed to upload file');
     } finally {
       setIsUploading(false);
@@ -72,8 +115,8 @@ const ChatbotFiles: React.FC = () => {
 
   const downloadFile = async (fileId: number, fileName: string) => {
     try {
-      const response = await callApi('get', `/api/v1/chatbots/${chatbotId}/files/${fileId}`) as ApiResponse;
-      const fileData = response?.data as { file_data: string; file_type: string };
+      const response = await callApi('get', `/api/v1/chatbots/${chatbotId}/files/${fileId}`) as FileDownloadResponse;
+      const fileData = response?.data?.file;
       
       if (!fileData?.file_data || !fileData?.file_type) {
         throw new Error('Invalid file data received');
@@ -97,7 +140,9 @@ const ChatbotFiles: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (error) {
+      toast.success('File downloaded successfully');
+    } catch (err) {
+      console.error('Failed to download file:', err);
       toast.error('Failed to download file');
     }
   };
@@ -111,10 +156,22 @@ const ChatbotFiles: React.FC = () => {
       await callApi('delete', `/api/v1/chatbots/${chatbotId}/files/${fileId}`);
       toast.success('File deleted successfully');
       loadFiles();
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete file');
     }
   };
+
+  // Check authentication
+  if (authLoading) return <p className="p-4">Loading authentication...</p>;
+  if (!token) {
+    router.push('/login');
+    return null;
+  }
+
+  // Show loading while fetching data
+  if (dataLoading) {
+    return <p className="p-4">Loading files data...</p>;
+  }
 
   return (
     <div className="p-6">

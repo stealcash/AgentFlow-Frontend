@@ -27,16 +27,20 @@ export default function SignupPage() {
 
   const onSubmit = async (data: SignupData) => {
     try {
-      const response = (await callApiWithoutAuth('post', '/api/v1/auth/signup', data)) as ApiResponse
-
-      if (response?.data?.token) {
-        login(response.data.token)
+      const res = (await callApiWithoutAuth('post', '/api/v1/auth/signup', data)) as ApiResponse
+      const response = res?.data as { token: string };
+      if (response?.token) {
+        login(response.token)
         router.push('/dashboard')
       } else {
         alert('Signup failed — no token received')
       }
-    } catch (err: any) {
-      alert(err.message || 'Signup failed')
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'message' in err) {
+        alert((err as { message?: string }).message || 'Signup failed');
+      } else {
+        alert('Signup failed');
+      }
     }
   }
 

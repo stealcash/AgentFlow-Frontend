@@ -23,16 +23,20 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginData) => {
     try {
-      const response = (await callApiWithoutAuth('post', '/api/v1/auth/login', data)) as ApiResponse
-
-      if (response?.data?.token) {
-        login(response.data.token)
+      const res = (await callApiWithoutAuth('post', '/api/v1/auth/login', data)) as ApiResponse
+      const response = res?.data as { token: string };
+      if (response?.token) {
+        login(response.token)
         router.push('/dashboard')
       } else {
         alert('Login failed — no token received')
       }
-    } catch (err: any) {
-      alert(err.message || 'Login failed')
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'message' in err) {
+        alert((err as { message?: string }).message || 'Login failed');
+      } else {
+        alert('Login failed');
+      }
     }
   }
 

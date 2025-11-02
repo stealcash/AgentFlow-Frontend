@@ -1,39 +1,53 @@
 "use client";
 
 import { useState } from "react";
-import { withAuth } from "@/lib/withAuth";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import Image from 'next/image';
 import { callBinaryApi } from "@/utils/api";
 
 function ImageGeneratorPage() {
+  // Auth hooks
+  const { token, loading: authLoading } = useAuth();
+  const router = useRouter();
 
+  // State hooks
   const [prompt, setPrompt] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
- async function generateImage() {
-  setLoading(true);
-  setErr(null);
-  setImageUrl(null);
-
-  try {
-    const res = await callBinaryApi(
-      "post",
-      "/api/v1/generate-image",
-      { prompt:prompt,
-        width:600,
-        height:600 } 
-    );
-
-    // convert blob → object URL
-    const url = URL.createObjectURL(res);
-    setImageUrl(url);
-  } catch (e: any) {
-    setErr(e.message || "Unknown error");
-  } finally {
-    setLoading(false);
+  // Check authentication
+  if (authLoading) return <p className="p-4">Loading...</p>;
+  if (!token) {
+    router.push('/login');
+    return null;
   }
-}
+
+
+  async function generateImage() {
+    setLoading(true);
+    setErr(null);
+    setImageUrl(null);
+    try {
+      const res = await callBinaryApi(
+        "post",
+        "/api/v1/generate-image",
+        { prompt: prompt, width: 600, height: 600 }
+      );
+      // convert blob → object URL
+      const url = URL.createObjectURL(res);
+      setImageUrl(url);
+    } catch (e: unknown) {
+      if (e && typeof e === 'object' && 'message' in e) {
+        setErr((e as { message?: string }).message || "Unknown error");
+      } else {
+        setErr("Unknown error");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div style={{ maxWidth: 720, margin: "32px auto", padding: 16 }}>
@@ -70,18 +84,18 @@ function ImageGeneratorPage() {
       {err && <p style={{ color: "red", marginTop: 12 }}>{err}</p>}
 
       {imageUrl && (
-        <div style={{ marginTop: 20 }}>
-          <img
+        <div style={{ marginTop: 20, position: 'relative', width: '100%', height: '600px' }}>
+          <Image
             src={imageUrl}
             alt="Generated"
-            style={{ maxWidth: "100%", borderRadius: 10 }}
-            alt=""
+            fill
+            style={{ objectFit: 'contain', borderRadius: 10 }}
+            unoptimized // This is needed for blob URLs
           />
-          
         </div>
       )}
     </div>
   );
 }
 
-export default withAuth(ImageGeneratorPage);
+export default ImageGeneratorPage;

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { callApi } from '@/utils/api'
 import Link from 'next/link'
 import Image from 'next/image'
-import { withAuth } from '@/lib/withAuth'
+import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
 
 type Chatbot = {
   id: number
@@ -14,21 +15,44 @@ type Chatbot = {
 }
 
 function ChatbotsPage() {
-  const [chatbots, setChatbots] = useState<Chatbot[]>([])
-  const [loading, setLoading] = useState(true)
+  // Auth hooks
+  const { token, loading: authLoading } = useAuth();
+  const router = useRouter();
 
+  // State hooks
+  const [chatbots, setChatbots] = useState<Chatbot[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
+
+  // Effects
   useEffect(() => {
-    fetchChatbots()
-  }, [])
+    if (token) {
+      const load = async () => {
+        setDataLoading(true);
+        await fetchChatbots();
+        setDataLoading(false);
+      };
+      load();
+    }
+  }, [token]);
+
+  // Check authentication
+  if (authLoading) return <p className="p-4">Loading authentication...</p>;
+  if (!token) {
+    router.push('/login');
+    return null;
+  }
 
   const fetchChatbots = async () => {
     const res = await callApi('get', `/api/v1/chatbots`)
     const response = res?.data as { chatbots: Chatbot[] }
     setChatbots(response.chatbots || [])
-    setLoading(false)
+  setDataLoading(false)
   }
 
-  if (loading) return <p className="p-4">Loading chatbots...</p>
+  // Show loading while fetching data
+  if (dataLoading) {
+    return <p className="p-4">Loading chatbots data...</p>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -69,4 +93,4 @@ function ChatbotsPage() {
   )
 }
 
-export default withAuth(ChatbotsPage)
+export default ChatbotsPage

@@ -3,7 +3,8 @@
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { callApi } from '@/utils/api'
-import { withAuth } from '@/lib/withAuth'
+import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 type Category = {
@@ -14,25 +15,48 @@ type Category = {
 }
 
 function CategoriesPage() {
-  const params = useParams<{ id: string }>()
-  const chatbotId = params.id
+  // Auth hooks
+  const { token, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
 
-  const [categories, setCategories] = useState<Category[]>([])
-  const [newName, setNewName] = useState('')
-  const [parentId, setParentId] = useState<number | null>(null)
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [loading, setLoading] = useState(true)
+  // State hooks
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [newName, setNewName] = useState('');
+  const [parentId, setParentId] = useState<number | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
 
+  // Get chatbot ID after params are available
+  const chatbotId = params.id;
+
+  // Effects
   useEffect(() => {
-    fetchCategories(chatbotId)
-  }, [chatbotId])
+    if (token && chatbotId) {
+      const load = async () => {
+        setDataLoading(true);
+        await fetchCategories(chatbotId);
+        setDataLoading(false);
+      };
+      load();
+    }
+  }, [chatbotId, token]);
+
+  // Check authentication
+  if (authLoading) return <p className="p-4">Loading authentication...</p>;
+  if (!token) {
+    router.push('/login');
+    return null;
+  }
 
   const fetchCategories = async (chatbotId: unknown) => {
-    const res = await callApi('get', `/api/v1/chatbots/${chatbotId}/categories`)
-    const response = res?.data as { categories: Category[] }
-    setCategories(response.categories || [])
-
-    setLoading(false)
+    try {
+      const res = await callApi('get', `/api/v1/chatbots/${chatbotId}/categories`);
+      const response = res?.data as { categories: Category[] };
+      setCategories(response.categories || []);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
   }
 
   const handleCreateCategory = async () => {
@@ -73,7 +97,10 @@ function CategoriesPage() {
     fetchCategories(chatbotId)
   }
 
-  if (loading) return <p className="p-4">Loading...</p>
+  // Show loading while fetching data
+  if (dataLoading) {
+    return <p className="p-4">Loading categories data...</p>;
+  }
 
   return (
     <div className="max-w-3xl mx-auto p-4">
@@ -159,4 +186,4 @@ function CategoriesPage() {
   )
 }
 
-export default withAuth(CategoriesPage)
+export default CategoriesPage

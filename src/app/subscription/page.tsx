@@ -1,6 +1,6 @@
 'use client';
 
-import { withAuth } from '@/lib/withAuth';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
 import { callApi } from '@/utils/api';
@@ -21,34 +21,47 @@ type Subscription = {
 };
 
 function SubscriptionPage() {
-  const { token } = useAuth();
+  // Auth hooks
+  const { token, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // State hooks
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [userType, setUserType] = useState<string>('');
-
-  const [newPlan, setNewPlan] = useState({
+  const [newPlan, setNewPlan] = useState(() => ({
     name: '',
     description: '',
     price: '',
     features: '',
-  });
-
+  }));
+  
+  // Effects
   useEffect(() => {
-    if (!token) return;
-
-    const load = async () => {
-      await fetchUserType();
-      await fetchPlans();
-      await fetchSubscription();
-    };
-
-    load();
+    if (token) {
+      const load = async () => {
+        await fetchUserType();
+        await fetchPlans();
+        await fetchSubscription();
+      };
+      load();
+    }
   }, [token]);
+
+  // Check authentication
+  if (authLoading) return <p className="p-4">Loading...</p>;
+  if (!token) {
+    router.push('/login');
+    return null;
+  }
+
+  // API Functions
 
   const fetchUserType = async () => {
     try {
       const res = await callApi('get', '/api/v1/profile/me');
-      setUserType(res?.data?.user?.user_type || '');
+      const response = res?.data as { user: { user_type: string } };
+      setUserType(response.user.user_type || '');
     } catch (err) {
       console.error('Failed to fetch user type:', err);
     }
@@ -57,10 +70,10 @@ function SubscriptionPage() {
   const fetchPlans = async () => {
     try {
       const res = await callApi('get', '/api/v1/plans');
-      console.log(res)
-      const parsed = (res?.data?.plans || []).map((p: any) => ({
+      const response = res?.data as { plans: Plan[] };
+      const parsed = (response.plans || []).map((p: Plan) => ({
         ...p,
-        features: p.features ? JSON.parse(p.features) : [],
+        features: p.features ? (typeof p.features === 'string' ? JSON.parse(p.features) : p.features) : [],
       }));
       setPlans(parsed);
     } catch (err) {
@@ -71,15 +84,18 @@ function SubscriptionPage() {
   const fetchSubscription = async () => {
     try {
       const res = await callApi('get', '/api/v1/subscription');
-      if (res?.data?.subscription) {
+      const response = res?.data as { subscription: Subscription };
+      if (response.subscription) {
         setSubscription({
           plan: {
-            ...res.data.subscription.plan,
-            features: JSON.parse(res.data.subscription.plan.features || '[]'),
+            ...response.subscription.plan,
+            features: Array.isArray(response.subscription.plan.features)
+              ? response.subscription.plan.features
+              : JSON.parse(response.subscription.plan.features || '[]'),
           },
-          start_date: res.data.subscription.start_date,
-          end_date: res.data.subscription.end_date,
-          status: res.data.subscription.status,
+          start_date: response.subscription.start_date,
+          end_date: response.subscription.end_date,
+          status: response.subscription.status,
         });
       }
     } catch (err) {
@@ -216,4 +232,4 @@ function SubscriptionPage() {
   );
 }
 
-export default withAuth(SubscriptionPage);
+export default SubscriptionPage;

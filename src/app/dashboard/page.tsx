@@ -1,6 +1,6 @@
 'use client';
 
-import { withAuth } from '@/lib/withAuth';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
 import { callApi } from '@/utils/api';
@@ -9,26 +9,38 @@ import { Chatbot, ChatBotResponse, Profile, ProfileResponse } from '@/types/resp
 
 
 function DashboardPage() {
-  const { token } = useAuth();
+  // Auth hooks
+  const { token, loading: authLoading } = useAuth();
+  console.log(token )
+  const router = useRouter();
 
+  // State hooks
   const [profile, setProfile] = useState<Profile | null>(null);
   const [companyName, setCompanyName] = useState('');
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
   const [newName, setNewName] = useState('');
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
+  // Effects
   useEffect(() => {
-    if (!token) return; // withAuth already handles redirect, so just return
-
-    const load = async () => {
-      await fetchProfile();
-      await fetchChatbots();
-      setLoading(false);
-    };
-
-    load();
+    if (token) {
+      const load = async () => {
+        setLoading(true);
+        await fetchProfile();
+        await fetchChatbots();
+        setLoading(false);
+      };
+      load();
+    }
   }, [token]);
+
+  // Check authentication
+  if (authLoading) return <p className="p-4">Loading...</p>;
+  if (!token) {
+    router.push('/login');
+    return null;
+  }
 
   const fetchProfile = async () => {
     try {
@@ -81,7 +93,15 @@ function DashboardPage() {
     fetchChatbots();
   };
 
-  if (loading) return <p className="p-4">Loading...</p>;
+  // Loading state is checked at the top of the component
+
+  // Loading indicator while fetching data
+  if (loading) {
+    return <p className="p-4">Loading dashboard data...</p>;
+  }
+
+
+
 
   return (
     <div className="max-w-3xl mx-auto p-4">
@@ -163,4 +183,4 @@ function DashboardPage() {
   );
 }
 
-export default withAuth(DashboardPage);
+export default DashboardPage;

@@ -36,8 +36,9 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       const res = await callApi('get', `/api/v1/chatbots/${chatbotId}/analytics`)
-      setData(res?.data?.analytics || null)
-      setLogs(res?.data?.logs || [])
+      const response = res?.data as { analytics: Analytics ,logs: LogEntry[] }
+      setData(response.analytics || null)
+      setLogs(response.logs || [])
     } catch (err) {
       console.error('Failed to fetch analytics:', err)
     } finally {
