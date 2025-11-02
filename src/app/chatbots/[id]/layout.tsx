@@ -15,6 +15,7 @@ export default function ChatbotLayout({ children }: { children: ReactNode }) {
     { href: `/chatbots/${chatbotId}/categories`, label: 'Categories' },
     { href: `/chatbots/${chatbotId}/questions`, label: 'Questions' },
     { href: `/chatbots/${chatbotId}/general-questions`, label: 'General Qs' },
+    { href: `/chatbots/${chatbotId}/files`, label: 'Files' },
     { href: `/chatbots/${chatbotId}/embed`, label: 'Embed Script' },
     { href: `/chatbots/${chatbotId}/allowed-domains`, label: 'Allowed Domains' },
     { href: `/chatbots/${chatbotId}/analytics`, label: 'Anylatics' },

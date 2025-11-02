@@ -43,3 +43,17 @@ export type ErrorWithCodeAny = {
   message?: unknown;
   errors?: unknown;
 };
+
+export interface ChatbotFile {
+  id: number;
+  title: string;
+  file_type: string;
+  created_at: string;
+  file_data?: string; // base64 string, only present when getting a specific file
+}
+
+export interface UploadFileInput {
+  title: string;
+  file_data: string;
+  file_type: string;
+}

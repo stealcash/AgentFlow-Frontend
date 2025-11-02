@@ -47,6 +47,7 @@ export default function SignupPage() {
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="bg-white shadow-md p-6 rounded-lg w-full max-w-md space-y-4"
+        style={{color:"black"}}
       >
         <h2 className="text-2xl font-bold text-center">Create Account</h2>
 
